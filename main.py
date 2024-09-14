@@ -8,7 +8,6 @@ from sklearn.neural_network import MLPClassifier
 import joblib
 import os
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 
 df = pd.read_csv('merged.csv', sep=';')
 
@@ -139,7 +138,6 @@ for product in products:
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/predict')
 def my_endpoint():
@@ -148,6 +146,11 @@ def my_endpoint():
         return jsonify(predict(query_param))
     else:
         return "No query parameter provided."
+    
+@app.route('/clients', methods=['GET'])
+def get_clients():
+    client_ids = list(set(df['client_id'].head(500).to_list()))
+    return jsonify(client_ids)
 
 def predict(client_id):
     client = df[df['client_id'] == client_id].drop(columns=['contract_type', 'period', 'client_id', 'contract_id'], axis=1)
@@ -164,5 +167,5 @@ def predict(client_id):
         
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8080)
+    app.run(debug=True, port=8090)
 
