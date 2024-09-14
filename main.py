@@ -136,7 +136,20 @@ for product in products:
         models[mapped] = model
         joblib.dump(model, filename)
 
+import os
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import vertexai
+from vertexai.generative_models import GenerativeModel, GenerationConfig
 
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "lcl-hackathon-e7-sbox-a647-6d503291ee1a.json"
+
+PROJECT_ID = "lcl-hackathon-e7-sbox-a647"
+LOCATION = "us-central1"
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+
+model = GenerativeModel("gemini-1.5-pro-001", generation_config=GenerationConfig(temperature=0.4))
+chat = model.start_chat()
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -145,9 +158,14 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 def my_endpoint():
     query_param = request.args.get('clientId')
     if query_param:
-        return jsonify(predict(query_param))
+        predictions = predict(query_param)
+        if predictions:
+            ai_response = get_ai_response(predictions)
+            return jsonify({"predictions": predictions, "ai_response": ai_response})
+        else:
+            return "No such client found.", 404
     else:
-        return "No query parameter provided."
+        return "No query parameter provided.", 400
 
 def predict(client_id):
     client = df[df['client_id'] == client_id].drop(columns=['contract_type', 'period', 'client_id', 'contract_id'], axis=1)
@@ -161,7 +179,17 @@ def predict(client_id):
         result[name] = bool((sum(prediction) / len(prediction)) > 0.5)
 
     return result
-        
+
+@app.route('/clients', methods=['GET'])
+def get_clients():
+    client_ids = df['client_id'].head(200).tolist()
+    return jsonify(client_ids)
+
+def get_ai_response(predictions):
+    prompt = f"Comporte-toi comme un conseiller bancaire qui propose des produits à un client. Les produits sont : {predictions}."
+    response = chat.send_message(prompt)
+    return response.candidates[0].content.parts[0]
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080)
