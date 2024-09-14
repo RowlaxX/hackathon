@@ -8,6 +8,7 @@ from sklearn.neural_network import MLPClassifier
 import joblib
 import os
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 df = pd.read_csv('merged.csv', sep=';')
 
@@ -138,6 +139,7 @@ for product in products:
 
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/predict')
 def my_endpoint():
